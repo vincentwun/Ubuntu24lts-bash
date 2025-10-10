@@ -1,102 +1,97 @@
 #!/bin/bash
 
 echo "=========================================="
-echo "Fcitx5 速成輸入法診斷和修復工具"
+echo "安裝 libime 和 fcitx5-table-extra"
 echo "=========================================="
 echo ""
 
-# 步驟 1: 檢查 fcitx5-table-extra 檔案是否存在
-echo "步驟 1: 檢查安裝檔案..."
-if [ -d "/usr/share/fcitx5/table" ]; then
-    echo "✓ 表格目錄存在"
-    echo "已安裝的表格檔案："
-    ls -lh /usr/share/fcitx5/table/ | grep -E "quick|cangjie"
-    
-    if ls /usr/share/fcitx5/table/quick*.dict 2>/dev/null; then
-        echo "✓ 速成字典檔案存在"
-    else
-        echo "✗ 速成字典檔案不存在，需要重新安裝"
-        NEED_REINSTALL=1
-    fi
-else
-    echo "✗ 表格目錄不存在，需要重新安裝"
-    NEED_REINSTALL=1
-fi
+# 步驟 1: 安裝基本編譯工具
+echo "步驟 1: 安裝編譯依賴..."
+sudo apt update
+sudo apt install -y build-essential cmake extra-cmake-modules \
+    gettext git pkg-config
 
-# 檢查配置檔案
+# 步驟 2: 安裝 fcitx5 相關開發套件
 echo ""
-echo "檢查配置檔案..."
-if [ -f "/usr/share/fcitx5/inputmethod/quick.conf" ]; then
-    echo "✓ 速成配置檔案存在"
-else
-    echo "✗ 速成配置檔案不存在"
-    NEED_REINSTALL=1
-fi
+echo "步驟 2: 安裝 fcitx5 開發套件..."
+sudo apt install -y libfcitx5core-dev libfcitx5config-dev \
+    fcitx5-modules-dev fcitx5-chinese-addons
 
+# 步驟 3: 編譯安裝 libime
 echo ""
-echo "=========================================="
+echo "步驟 3: 編譯安裝 libime..."
+cd /tmp
+rm -rf libime
+git clone https://github.com/fcitx/libime.git
+cd libime
 
-# 步驟 2: 如果需要，重新安裝
-if [ "$NEED_REINSTALL" = "1" ]; then
-    echo "步驟 2: 重新編譯安裝 fcitx5-table-extra..."
-    echo ""
-    
-    # 安裝編譯依賴
-    echo "安裝編譯依賴..."
-    sudo apt install -y cmake extra-cmake-modules \
-        gettext libfcitx5core-dev libfcitx5config-dev \
-        fcitx5-modules-dev libime-bin git
-    
-    # 下載原始碼
-    echo ""
-    echo "下載原始碼..."
-    cd /tmp
-    rm -rf fcitx5-table-extra
-    git clone https://github.com/fcitx/fcitx5-table-extra.git
-    cd fcitx5-table-extra
-    
-    # 編譯安裝
-    echo ""
-    echo "開始編譯（這可能需要幾分鐘）..."
-    mkdir -p build && cd build
-    cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
-    make -j$(nproc)
-    sudo make install
-    
-    # 清理
-    cd /tmp
-    rm -rf fcitx5-table-extra
-    
-    echo ""
-    echo "✓ 重新安裝完成"
-else
-    echo "步驟 2: 檔案完整，跳過重新安裝"
-fi
+# 建立並進入 build 目錄
+mkdir -p build && cd build
 
+# 配置編譯選項
+cmake .. \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DENABLE_TEST=OFF \
+    -DENABLE_COVERAGE=OFF
+
+# 編譯（使用所有 CPU 核心）
+echo "編譯 libime（這可能需要幾分鐘）..."
+make -j$(nproc)
+
+# 安裝
+echo "安裝 libime..."
+sudo make install
+
+# 更新動態連結庫快取
+sudo ldconfig
+
+echo "✓ libime 安裝完成"
+
+# 步驟 4: 編譯安裝 fcitx5-table-extra
 echo ""
-echo "=========================================="
+echo "步驟 4: 編譯安裝 fcitx5-table-extra..."
+cd /tmp
+rm -rf fcitx5-table-extra
+git clone https://github.com/fcitx/fcitx5-table-extra.git
+cd fcitx5-table-extra
 
-# 步驟 3: 重新啟動 Fcitx5
-echo "步驟 3: 重新啟動 Fcitx5..."
-killall fcitx5 2>/dev/null
-echo "等待 Fcitx5 完全關閉..."
-sleep 3
-fcitx5 -d &
-echo "等待 Fcitx5 啟動..."
-sleep 2
-echo "✓ Fcitx5 已重新啟動"
+# 建立並進入 build 目錄
+mkdir -p build && cd build
 
+# 配置編譯選項
+cmake .. \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=Release
+
+# 編譯
+echo "編譯 fcitx5-table-extra..."
+make -j$(nproc)
+
+# 安裝
+echo "安裝 fcitx5-table-extra..."
+sudo make install
+
+echo "✓ fcitx5-table-extra 安裝完成"
+
+# 清理
+cd /tmp
+rm -rf libime fcitx5-table-extra
+
+# 步驟 5: 驗證安裝
 echo ""
 echo "=========================================="
-
-# 步驟 4: 驗證安裝
-echo "步驟 4: 驗證安裝結果..."
+echo "步驟 5: 驗證安裝..."
 echo ""
-echo "已安裝的表格輸入法："
-ls -1 /usr/share/fcitx5/table/*.dict 2>/dev/null | sed 's/.*\///' | sed 's/\.main\.dict//'
+echo "已安裝的 libime 檔案："
+ls -lh /usr/lib/libIME*.so* 2>/dev/null || echo "⚠ 警告: libime 共享庫未找到"
 
 echo ""
-echo "已安裝的輸入法配置："
-ls -1 /usr/share/fcitx5/inputmethod/*.conf 2>/dev/null | grep -E "quick|cangjie|boshiamy|zhengma" | sed 's/.*\///'
+echo "已安裝的速成表格檔案："
+ls -lh /usr/share/fcitx5/table/quick*.dict 2>/dev/null || echo "⚠ 警告: 速成字典未找到"
 
-echo "Done"
+echo ""
+echo "已安裝的速成配置檔："
+ls -lh /usr/share/fcitx5/inputmethod/quick*.conf 2>/dev/null || echo "⚠ 警告: 速成配置未找到"
+
+echo "✓ "
