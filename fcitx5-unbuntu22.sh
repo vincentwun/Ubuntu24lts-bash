@@ -1,6 +1,21 @@
 #!/bin/bash
 
-# Backup existing settings
+# Install fcitx5-gtk packages
+sudo apt update
+sudo apt install -y fcitx5-frontend-gtk2 fcitx5-frontend-gtk3 fcitx5-frontend-gtk4
+
+# Update GTK immodule cache
+sudo gtk-query-immodules-2.0 --update-cache 2>/dev/null
+sudo gtk-query-immodules-3.0 --update-cache 2>/dev/null
+
+# For GTK 4, manually create/update cache
+sudo mkdir -p /usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/immodules
+if [ -f "/usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/immodules/im-fcitx5.so" ]; then
+    sudo /usr/lib/x86_64-linux-gnu/libgtk-4-1/gtk-query-immodules-4.0 > /tmp/immodules.cache.tmp 2>/dev/null
+    sudo mv /tmp/immodules.cache.tmp /usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/immodules.cache 2>/dev/null
+fi
+
+# Backup existing environment files
 if [ -f /etc/environment ]; then
     sudo cp /etc/environment /etc/environment.backup.$(date +%Y%m%d_%H%M%S)
 fi
@@ -9,11 +24,7 @@ if [ -f ~/.xprofile ]; then
     cp ~/.xprofile ~/.xprofile.backup.$(date +%Y%m%d_%H%M%S)
 fi
 
-if [ -f ~/.bashrc ]; then
-    cp ~/.bashrc ~/.bashrc.backup.$(date +%Y%m%d_%H%M%S)
-fi
-
-# Clean incorrect environment variables
+# Clean old incorrect settings
 sudo sed -i '/GTK_IM_MODULE/d' /etc/environment 2>/dev/null
 sudo sed -i '/QT_IM_MODULE/d' /etc/environment 2>/dev/null
 sudo sed -i '/XMODIFIERS/d' /etc/environment 2>/dev/null
@@ -26,11 +37,7 @@ sed -i '/XMODIFIERS/d' ~/.xprofile 2>/dev/null
 sed -i '/SDL_IM_MODULE/d' ~/.xprofile 2>/dev/null
 sed -i '/INPUT_METHOD/d' ~/.xprofile 2>/dev/null
 
-sed -i '/GTK_IM_MODULE/d' ~/.bashrc 2>/dev/null
-sed -i '/QT_IM_MODULE/d' ~/.bashrc 2>/dev/null
-sed -i '/XMODIFIERS/d' ~/.bashrc 2>/dev/null
-
-# Write correct environment variables to /etc/environment
+# Write correct environment variables
 sudo tee -a /etc/environment > /dev/null << 'EOF'
 
 # Fcitx5 Input Method
