@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Update package list
-sudo apt update && sudo apt upgrade -y
-
-# Enable firewall
-sudo ufw enable
-
 # Remove snap version of Firefox
 sudo snap remove firefox
 
@@ -20,8 +14,3 @@ Pin: origin packages.mozilla.org
 Pin-Priority: 1000
 ' | sudo tee /etc/apt/preferences.d/mozilla
 sudo apt-get update && sudo apt-get install firefox -y
-
-# Install Surfshark VPN
-sudo apt  install curl
-curl -f https://downloads.surfshark.com/linux/debian-install.sh --output surfshark-install.sh
-sh surfshark-install.sh
